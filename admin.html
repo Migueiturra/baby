@@ -463,6 +463,7 @@
               '<div class="actions">',
                 '<button class="btn btn-secondary add-unit-btn" data-id="' + escapeHtml(row.id) + '" data-name="' + escapeHtml(row.name) + '">+1 unidad</button>',
                 '<button class="btn btn-secondary remove-unit-btn" data-id="' + escapeHtml(row.id) + '" data-name="' + escapeHtml(row.name) + '" data-available="' + escapeHtml(row.available_units) + '">-1 disponible</button>',
+                '<button class="btn btn-danger delete-gift-btn" data-id="' + escapeHtml(row.id) + '" data-name="' + escapeHtml(row.name) + '" data-reserved="' + escapeHtml(row.reserved_units) + '">Eliminar ítem</button>',
               '</div>',
             '</td>',
           '</tr>'
@@ -647,6 +648,41 @@
       await loadGifts();
     }
 
+    async function deleteGiftGroup(giftGroupId, giftName, reservedCount) {
+      hideMessage();
+
+      if (Number(reservedCount) > 0) {
+        showMessage('No se puede eliminar ' + giftName + ' porque tiene unidades reservadas.', 'error');
+        return;
+      }
+
+      const ok = window.confirm('Esto eliminará el regalo "' + giftName + '" y todas sus unidades disponibles. ¿Continuar?');
+      if (!ok) return;
+
+      const deleteItems = await supabaseClient
+        .from('gift_items')
+        .delete()
+        .eq('gift_group_id', giftGroupId);
+
+      if (deleteItems.error) {
+        showMessage(deleteItems.error.message || 'No se pudieron borrar las unidades del regalo.', 'error');
+        return;
+      }
+
+      const deleteGroup = await supabaseClient
+        .from('gift_groups')
+        .delete()
+        .eq('id', giftGroupId);
+
+      if (deleteGroup.error) {
+        showMessage(deleteGroup.error.message || 'No se pudo borrar el regalo.', 'error');
+        return;
+      }
+
+      showMessage('Se eliminó el ítem ' + giftName + '.', 'ok');
+      await loadGifts();
+    }
+
     async function clearOnlyReservations() {
       hideMessage();
       const ok = window.confirm('Esto borrará todas las reservas y dejará todas las unidades nuevamente disponibles. ¿Continuar?');
@@ -719,6 +755,16 @@
           removeBtn.getAttribute('data-id'),
           removeBtn.getAttribute('data-name'),
           removeBtn.getAttribute('data-available')
+        );
+        return;
+      }
+
+      const deleteBtn = event.target.closest('.delete-gift-btn');
+      if (deleteBtn) {
+        deleteGiftGroup(
+          deleteBtn.getAttribute('data-id'),
+          deleteBtn.getAttribute('data-name'),
+          deleteBtn.getAttribute('data-reserved')
         );
       }
     });
