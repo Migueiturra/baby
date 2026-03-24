@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lista de regalos</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg: #f6f7fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --primary: #7c3aed;
+      --primary-dark: #6d28d9;
+      --ok-bg: #ecfdf5;
+      --ok-text: #166534;
+      --warn-bg: #f3f4f6;
+      --warn-text: #374151;
+      --danger-bg: #fef2f2;
+      --danger-text: #991b1b;
+      --shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+      --radius: 20px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Inter, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .wrap {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    .hero,
+    .card,
+    .modal-box {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .hero {
+      padding: 28px;
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 2rem;
+    }
+
+    .sub {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      margin: 18px 0 22px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: #ede9fe;
+      color: #5b21b6;
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .message {
+      padding: 14px 16px;
+      border-radius: 14px;
+      font-size: 0.95rem;
+      display: none;
+      max-width: 520px;
+    }
+
+    .message.show {
+      display: block;
+    }
+
+    .message.ok {
+      background: var(--ok-bg);
+      color: var(--ok-text);
+    }
+
+    .message.error {
+      background: var(--danger-bg);
+      color: var(--danger-text);
+    }
+
+    .message.info {
+      background: var(--warn-bg);
+      color: var(--warn-text);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    .card {
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-height: 220px;
+    }
+
+    .card h3 {
+      margin: 0;
+      font-size: 1.1rem;
+    }
+
+    .meta,
+    .small {
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .pill {
+      padding: 8px 10px;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    .pill.available {
+      background: #ecfdf5;
+      color: #166534;
+    }
+
+    .pill.taken {
+      background: #f3f4f6;
+      color: #374151;
+    }
+
+    .btn {
+      border: none;
+      border-radius: 14px;
+      padding: 12px 16px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.2s ease;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-dark);
+    }
+
+    .btn-secondary {
+      background: #f3f4f6;
+      color: #111827;
+    }
+
+    .btn:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+
+    .actions {
+      margin-top: auto;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(17, 24, 39, 0.45);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 50;
+    }
+
+    .modal.show {
+      display: flex;
+    }
+
+    .modal-box {
+      width: 100%;
+      max-width: 560px;
+      padding: 22px;
+    }
+
+    .modal-box h2 {
+      margin-top: 0;
+      margin-bottom: 8px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+
+    label {
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+
+    input {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px 14px;
+      font-size: 1rem;
+      outline: none;
+    }
+
+    input:focus {
+      border-color: #c4b5fd;
+      box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
+    }
+
+    .confirm-box {
+      display: none;
+      margin-top: 18px;
+    }
+
+    .confirm-box.show {
+      display: block;
+    }
+
+    .confirm-card {
+      border: 1px dashed #c4b5fd;
+      background: #faf5ff;
+      border-radius: 18px;
+      padding: 18px;
+      line-height: 1.6;
+    }
+
+    code.token {
+      display: block;
+      margin-top: 10px;
+      padding: 10px 12px;
+      background: white;
+      border: 1px solid #ddd6fe;
+      border-radius: 12px;
+      word-break: break-all;
+      font-size: 0.9rem;
+    }
+
+    .footer-note {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-top: 10px;
+    }
+
+    @media (max-width: 920px) {
+      .grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 640px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .wrap {
+        padding: 16px;
+      }
+
+      h1 {
+        font-size: 1.7rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <h1>Lista de regalos</h1>
+      <p class="sub">
+        Elige un regalo disponible y déjalo reservado con tu nombre. Cuando un regalo ya fue tomado,
+        queda bloqueado para las demás personas.
+      </p>
+    </section>
+
+    <div class="toolbar">
+      <div class="badge" id="summaryBadge">Cargando regalos...</div>
+      <div class="message" id="globalMessage"></div>
+    </div>
+
+    <section class="grid" id="giftGrid"></section>
+  </div>
+
+  <div class="modal" id="reserveModal">
+    <div class="modal-box">
+      <h2>Reservar regalo</h2>
+      <p class="sub" id="selectedGiftText">Has elegido un regalo.</p>
+
+      <form id="reserveForm">
+        <div class="form-group">
+          <label for="personName">Nombre</label>
+          <input id="personName" name="personName" required />
+        </div>
+
+        <div class="form-group">
+          <label for="personLastName">Apellido</label>
+          <input id="personLastName" name="personLastName" required />
+        </div>
+
+        <div class="form-group">
+          <label for="personContact">Contacto (opcional)</label>
+          <input id="personContact" name="personContact" placeholder="Correo o teléfono" />
+        </div>
+
+        <div class="actions">
+          <button type="submit" class="btn btn-primary" id="submitReserveBtn">Confirmar reserva</button>
+          <button type="button" class="btn btn-secondary" id="closeModalBtn">Cancelar</button>
+        </div>
+      </form>
+
+      <div class="confirm-box" id="confirmBox">
+        <div class="confirm-card" id="confirmCard"></div>
+        <div class="actions" style="margin-top: 14px;">
+          <button type="button" class="btn btn-primary" id="finishBtn">Cerrar</button>
+        </div>
+        <div class="footer-note">
+          Guarda esta información. Más adelante ese token puede servir para la pantalla de cambio de regalo.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'https://wxbxhntsyrigsgkyfczi.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_BkjlR_5-FZihiX3PynHenA_-20x-HK-';
+
+    const giftGrid = document.getElementById('giftGrid');
+    const summaryBadge = document.getElementById('summaryBadge');
+    const globalMessage = document.getElementById('globalMessage');
+    const reserveModal = document.getElementById('reserveModal');
+    const reserveForm = document.getElementById('reserveForm');
+    const closeModalBtn = document.getElementById('closeModalBtn');
+    const selectedGiftText = document.getElementById('selectedGiftText');
+    const submitReserveBtn = document.getElementById('submitReserveBtn');
+    const confirmBox = document.getElementById('confirmBox');
+    const confirmCard = document.getElementById('confirmCard');
+    const finishBtn = document.getElementById('finishBtn');
+    const personNameInput = document.getElementById('personName');
+    const personLastNameInput = document.getElementById('personLastName');
+    const personContactInput = document.getElementById('personContact');
+
+    let supabaseClient = null;
+    let selectedGiftGroupId = null;
+    let selectedGiftName = '';
+
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function showMessage(text, type) {
+      const safeType = type || 'info';
+      globalMessage.textContent = text;
+      globalMessage.className = 'message show ' + safeType;
+    }
+
+    function hideMessage() {
+      globalMessage.textContent = '';
+      globalMessage.className = 'message';
+    }
+
+    function resetModalState() {
+      reserveForm.reset();
+      reserveForm.style.display = 'block';
+      confirmBox.classList.remove('show');
+      submitReserveBtn.disabled = false;
+      submitReserveBtn.textContent = 'Confirmar reserva';
+    }
+
+    function openModal(giftId, giftName) {
+      selectedGiftGroupId = giftId;
+      selectedGiftName = giftName;
+      selectedGiftText.textContent = 'Has elegido: ' + giftName;
+      resetModalState();
+      reserveModal.classList.add('show');
+    }
+
+    function closeModal() {
+      reserveModal.classList.remove('show');
+      selectedGiftGroupId = null;
+      selectedGiftName = '';
+      resetModalState();
+    }
+
+    function renderGifts(gifts) {
+      const totalAvailable = gifts.reduce(function (acc, item) {
+        return acc + Number(item.available_units || 0);
+      }, 0);
+
+      summaryBadge.textContent = 'Regalos disponibles: ' + totalAvailable;
+
+      if (!gifts.length) {
+        giftGrid.innerHTML = '<div class="card"><p>No hay regalos disponibles para mostrar.</p></div>';
+        return;
+      }
+
+      const html = gifts.map(function (gift) {
+        const available = Number(gift.available_units || 0);
+        const total = Number(gift.total_units || 0);
+        const reserved = Number(gift.reserved_units || 0);
+        const isSoldOut = available <= 0;
+        const categoryHtml = gift.category
+          ? '<span class="pill taken">' + escapeHtml(gift.category) + '</span>'
+          : '';
+        const statusClass = isSoldOut ? 'taken' : 'available';
+        const statusLabel = isSoldOut ? 'Agotado' : 'Disponible';
+        const buttonText = isSoldOut ? 'Ya tomado' : 'Elegir regalo';
+        const disabledAttr = isSoldOut ? 'disabled' : '';
+
+        return [
+          '<article class="card">',
+            '<div class="pill-row">',
+              categoryHtml,
+              '<span class="pill ' + statusClass + '">' + statusLabel + '</span>',
+            '</div>',
+            '<h3>' + escapeHtml(gift.name) + '</h3>',
+            '<div class="meta">' + escapeHtml(gift.description || 'Sin descripción') + '</div>',
+            '<div class="small">Quedan <strong>' + available + '</strong> de ' + total + '</div>',
+            '<div class="small">Tomados: ' + reserved + '</div>',
+            '<div class="actions">',
+              '<button class="btn btn-primary reserve-trigger" data-gift-id="' + escapeHtml(gift.id) + '" data-gift-name="' + escapeHtml(gift.name) + '" ' + disabledAttr + '>' + buttonText + '</button>',
+            '</div>',
+          '</article>'
+        ].join('');
+      }).join('');
+
+      giftGrid.innerHTML = html;
+    }
+
+    async function loadGifts() {
+      hideMessage();
+      summaryBadge.textContent = 'Cargando regalos...';
+
+      const response = await supabaseClient
+        .from('gift_group_availability')
+        .select('*')
+        .eq('is_active', true)
+        .order('category', { ascending: true })
+        .order('name', { ascending: true });
+
+      if (response.error) {
+        showMessage('No se pudieron cargar los regalos.', 'error');
+        summaryBadge.textContent = 'Error al cargar';
+        console.error(response.error);
+        return;
+      }
+
+      renderGifts(response.data || []);
+    }
+
+    async function reserveGift(payload) {
+      return await supabaseClient.rpc('reserve_gift', {
+        p_gift_group_id: payload.giftGroupId,
+        p_person_name: payload.name,
+        p_person_last_name: payload.lastName,
+        p_person_contact: payload.contact || null
+      });
+    }
+
+    function runLocalChecks() {
+      console.assert(typeof escapeHtml === 'function', 'escapeHtml debe existir');
+      console.assert(escapeHtml('<b>x</b>') === '&lt;b&gt;x&lt;/b&gt;', 'escapeHtml debe escapar HTML');
+      console.assert(document.getElementById('giftGrid'), 'giftGrid debe existir');
+      console.assert(document.getElementById('reserveForm'), 'reserveForm debe existir');
+    }
+
+    reserveForm.addEventListener('submit', async function (event) {
+      event.preventDefault();
+      hideMessage();
+
+      const name = personNameInput.value.trim();
+      const lastName = personLastNameInput.value.trim();
+      const contact = personContactInput.value.trim();
+
+      if (!selectedGiftGroupId) {
+        showMessage('No hay regalo seleccionado.', 'error');
+        return;
+      }
+
+      if (!name || !lastName) {
+        showMessage('Debes ingresar nombre y apellido.', 'error');
+        return;
+      }
+
+      submitReserveBtn.disabled = true;
+      submitReserveBtn.textContent = 'Reservando...';
+
+      const response = await reserveGift({
+        giftGroupId: selectedGiftGroupId,
+        name: name,
+        lastName: lastName,
+        contact: contact
+      });
+
+      submitReserveBtn.disabled = false;
+      submitReserveBtn.textContent = 'Confirmar reserva';
+
+      if (response.error) {
+        showMessage(response.error.message || 'No se pudo reservar el regalo.', 'error');
+        await loadGifts();
+        return;
+      }
+
+      const result = Array.isArray(response.data) ? response.data[0] : null;
+
+      confirmCard.innerHTML = [
+        '<strong>¡Tu regalo quedó reservado!</strong><br>',
+        'Regalo: <strong>' + escapeHtml(selectedGiftName) + '</strong><br>',
+        'Reservado por: <strong>' + escapeHtml(name + ' ' + lastName) + '</strong><br>',
+        contact ? 'Contacto: <strong>' + escapeHtml(contact) + '</strong><br>' : '',
+        '<br>',
+        'Haz una captura o toma una foto de esta pantalla para recordar tu elección.<br>',
+        '<br>',
+        'Token de cambio:',
+        '<code class="token">' + escapeHtml(result && result.edit_token ? result.edit_token : 'No disponible') + '</code>'
+      ].join('');
+
+      reserveForm.style.display = 'none';
+      confirmBox.classList.add('show');
+      showMessage('Reserva realizada correctamente.', 'ok');
+      await loadGifts();
+    });
+
+    closeModalBtn.addEventListener('click', closeModal);
+    finishBtn.addEventListener('click', closeModal);
+
+    reserveModal.addEventListener('click', function (event) {
+      if (event.target === reserveModal) {
+        closeModal();
+      }
+    });
+
+    giftGrid.addEventListener('click', function (event) {
+      const button = event.target.closest('.reserve-trigger');
+      if (!button) {
+        return;
+      }
+
+      const giftId = button.getAttribute('data-gift-id');
+      const giftName = button.getAttribute('data-gift-name') || 'Regalo';
+      openModal(giftId, giftName);
+    });
+
+    function initApp() {
+      if (!window.supabase || typeof window.supabase.createClient !== 'function') {
+        showMessage('No se cargó la librería de Supabase.', 'error');
+        return;
+      }
+
+      supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      runLocalChecks();
+      loadGifts();
+    }
+
+    initApp();
+  </script>
+</body>
+</html>
