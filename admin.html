@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Administración de regalos</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg: #f6f7fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --primary: #7c3aed;
+      --primary-dark: #6d28d9;
+      --danger: #b91c1c;
+      --danger-dark: #991b1b;
+      --danger-soft: #fef2f2;
+      --success-soft: #ecfdf5;
+      --success-text: #166534;
+      --warn-soft: #f3f4f6;
+      --warn-text: #374151;
+      --shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+      --radius: 20px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Inter, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .wrap {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    .hero,
+    .panel,
+    .table-wrap,
+    .form-card,
+    .danger-zone {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .hero {
+      padding: 28px;
+      margin-bottom: 18px;
+    }
+
+    h1, h2, h3 {
+      margin-top: 0;
+    }
+
+    .sub {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .message {
+      padding: 14px 16px;
+      border-radius: 14px;
+      font-size: 0.95rem;
+      display: none;
+      margin-bottom: 16px;
+    }
+
+    .message.show { display: block; }
+    .message.ok { background: var(--success-soft); color: var(--success-text); }
+    .message.error { background: var(--danger-soft); color: var(--danger); }
+    .message.info { background: var(--warn-soft); color: var(--warn-text); }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 380px 1fr;
+      gap: 18px;
+      align-items: start;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .form-card,
+    .danger-zone,
+    .panel {
+      padding: 18px;
+    }
+
+    .toolbar {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .search {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px 14px;
+      font-size: 1rem;
+      outline: none;
+    }
+
+    .search:focus,
+    input:focus,
+    textarea:focus,
+    select:focus {
+      border-color: #c4b5fd;
+      box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: #ede9fe;
+      color: #5b21b6;
+      font-weight: 600;
+      font-size: 0.95rem;
+      white-space: nowrap;
+    }
+
+    .form-grid {
+      display: grid;
+      gap: 12px;
+    }
+
+    .form-row-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    label {
+      display: block;
+      font-size: 0.92rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    input,
+    textarea,
+    select {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px 14px;
+      font-size: 1rem;
+      outline: none;
+      background: white;
+    }
+
+    textarea {
+      min-height: 92px;
+      resize: vertical;
+    }
+
+    .btn {
+      border: none;
+      border-radius: 14px;
+      padding: 12px 16px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.2s ease;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+
+    .btn-primary:hover { background: var(--primary-dark); }
+
+    .btn-secondary {
+      background: #f3f4f6;
+      color: #111827;
+    }
+
+    .btn-danger {
+      background: var(--danger);
+      color: white;
+    }
+
+    .btn-danger:hover { background: var(--danger-dark); }
+
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .table-wrap {
+      overflow: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 980px;
+    }
+
+    th,
+    td {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      vertical-align: top;
+      font-size: 0.95rem;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      background: #fafafa;
+      z-index: 1;
+      font-size: 0.86rem;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      color: var(--muted);
+    }
+
+    .gift-name {
+      font-weight: 700;
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    .small {
+      font-size: 0.88rem;
+      color: var(--muted);
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .empty {
+      padding: 24px;
+      color: var(--muted);
+      display: none;
+    }
+
+    .danger-zone {
+      border-color: #fecaca;
+      background: #fffafa;
+    }
+
+    .danger-zone p {
+      color: #7f1d1d;
+      margin-top: 0;
+    }
+
+    @media (max-width: 980px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .form-row-2,
+      .toolbar {
+        grid-template-columns: 1fr;
+      }
+
+      .wrap {
+        padding: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <h1>Administración de regalos</h1>
+      <p class="sub">
+        Página interna para crear regalos, ajustar unidades disponibles y limpiar el listado cuando sea necesario.
+      </p>
+    </section>
+
+    <div class="message" id="globalMessage"></div>
+
+    <div class="layout">
+      <div class="stack">
+        <section class="form-card">
+          <h2>Agregar regalo</h2>
+          <form id="giftForm" class="form-grid">
+            <div>
+              <label for="giftName">Nombre</label>
+              <input id="giftName" required />
+            </div>
+
+            <div>
+              <label for="giftCategory">Categoría</label>
+              <input id="giftCategory" placeholder="Ej.: Higiene, Ropa, Dormitorio" />
+            </div>
+
+            <div>
+              <label for="giftDescription">Descripción</label>
+              <textarea id="giftDescription" placeholder="Descripción breve"></textarea>
+            </div>
+
+            <div>
+              <label for="giftReferenceUrl">Link de referencia</label>
+              <input id="giftReferenceUrl" placeholder="https://..." />
+            </div>
+
+            <div>
+              <label for="giftImageUrl">Link de imagen</label>
+              <input id="giftImageUrl" placeholder="https://..." />
+            </div>
+
+            <div>
+              <label for="giftQuantity">Cantidad inicial</label>
+              <input id="giftQuantity" type="number" min="1" value="1" required />
+            </div>
+
+            <div class="actions">
+              <button class="btn btn-primary" type="submit" id="createGiftBtn">Crear regalo</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="danger-zone">
+          <h3>Zona delicada</h3>
+          <p>
+            Estas acciones afectan el listado completo. Úsalas solo si realmente quieres reiniciar o vaciar la base de regalos.
+          </p>
+          <div class="actions">
+            <button class="btn btn-danger" type="button" id="clearReservationsBtn">Borrar solo reservas</button>
+            <button class="btn btn-danger" type="button" id="resetAllBtn">Borrar regalos y reservas</button>
+          </div>
+        </section>
+      </div>
+
+      <div>
+        <div class="toolbar">
+          <input class="search" id="searchInput" placeholder="Buscar por nombre o categoría" />
+          <div class="badge" id="summaryBadge">Cargando...</div>
+          <button class="btn btn-secondary" id="refreshBtn" type="button">Actualizar</button>
+        </div>
+
+        <section class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Regalo</th>
+                <th>Categoría</th>
+                <th>Total</th>
+                <th>Disponibles</th>
+                <th>Reservados</th>
+                <th>Referencia</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="giftTableBody"></tbody>
+          </table>
+          <div class="empty" id="emptyState">No hay regalos para mostrar.</div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'https://wxbxhntsyrigsgkyfczi.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_BkjlR_5-FZihiX3PynHenA_-20x-HK-';
+
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const globalMessage = document.getElementById('globalMessage');
+    const giftForm = document.getElementById('giftForm');
+    const createGiftBtn = document.getElementById('createGiftBtn');
+    const refreshBtn = document.getElementById('refreshBtn');
+    const searchInput = document.getElementById('searchInput');
+    const summaryBadge = document.getElementById('summaryBadge');
+    const giftTableBody = document.getElementById('giftTableBody');
+    const emptyState = document.getElementById('emptyState');
+    const clearReservationsBtn = document.getElementById('clearReservationsBtn');
+    const resetAllBtn = document.getElementById('resetAllBtn');
+
+    const giftNameInput = document.getElementById('giftName');
+    const giftCategoryInput = document.getElementById('giftCategory');
+    const giftDescriptionInput = document.getElementById('giftDescription');
+    const giftReferenceUrlInput = document.getElementById('giftReferenceUrl');
+    const giftImageUrlInput = document.getElementById('giftImageUrl');
+    const giftQuantityInput = document.getElementById('giftQuantity');
+
+    let allGifts = [];
+
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function showMessage(text, type) {
+      globalMessage.textContent = text;
+      globalMessage.className = 'message show ' + (type || 'info');
+    }
+
+    function hideMessage() {
+      globalMessage.textContent = '';
+      globalMessage.className = 'message';
+    }
+
+    function setSummary(rows) {
+      const totalGroups = rows.length;
+      const totalUnits = rows.reduce(function (sum, row) {
+        return sum + Number(row.total_units || 0);
+      }, 0);
+      summaryBadge.textContent = 'Regalos: ' + totalGroups + ' | Unidades: ' + totalUnits;
+    }
+
+    function renderGifts(rows) {
+      setSummary(rows);
+
+      if (!rows.length) {
+        giftTableBody.innerHTML = '';
+        emptyState.style.display = 'block';
+        return;
+      }
+
+      emptyState.style.display = 'none';
+
+      giftTableBody.innerHTML = rows.map(function (row) {
+        const referenceHtml = row.reference_url
+          ? '<a href="' + escapeHtml(row.reference_url) + '" target="_blank" rel="noopener noreferrer">Abrir</a>'
+          : '<span class="muted">-</span>';
+
+        return [
+          '<tr>',
+            '<td>',
+              '<div class="gift-name">' + escapeHtml(row.name) + '</div>',
+              '<div class="small">' + escapeHtml(row.description || '') + '</div>',
+            '</td>',
+            '<td>' + escapeHtml(row.category || '-') + '</td>',
+            '<td>' + escapeHtml(row.total_units) + '</td>',
+            '<td>' + escapeHtml(row.available_units) + '</td>',
+            '<td>' + escapeHtml(row.reserved_units) + '</td>',
+            '<td>' + referenceHtml + '</td>',
+            '<td>',
+              '<div class="actions">',
+                '<button class="btn btn-secondary add-unit-btn" data-id="' + escapeHtml(row.id) + '" data-name="' + escapeHtml(row.name) + '">+1 unidad</button>',
+                '<button class="btn btn-secondary remove-unit-btn" data-id="' + escapeHtml(row.id) + '" data-name="' + escapeHtml(row.name) + '" data-available="' + escapeHtml(row.available_units) + '">-1 disponible</button>',
+              '</div>',
+            '</td>',
+          '</tr>'
+        ].join('');
+      }).join('');
+    }
+
+    function applyFilter() {
+      const term = searchInput.value.trim().toLowerCase();
+      if (!term) {
+        renderGifts(allGifts);
+        return;
+      }
+
+      const filtered = allGifts.filter(function (row) {
+        return [row.name, row.category, row.description].some(function (value) {
+          return String(value || '').toLowerCase().includes(term);
+        });
+      });
+
+      renderGifts(filtered);
+    }
+
+    async function loadGifts() {
+      hideMessage();
+      summaryBadge.textContent = 'Cargando...';
+
+      const response = await supabaseClient
+        .from('gift_group_availability')
+        .select('*')
+        .order('category', { ascending: true })
+        .order('name', { ascending: true });
+
+      if (response.error) {
+        showMessage('No se pudo cargar el listado de regalos.', 'error');
+        console.error(response.error);
+        return;
+      }
+
+      allGifts = response.data || [];
+      applyFilter();
+    }
+
+    async function createGift(event) {
+      event.preventDefault();
+      hideMessage();
+
+      const name = giftNameInput.value.trim();
+      const category = giftCategoryInput.value.trim();
+      const description = giftDescriptionInput.value.trim();
+      const referenceUrl = giftReferenceUrlInput.value.trim();
+      const imageUrl = giftImageUrlInput.value.trim();
+      const quantity = Number(giftQuantityInput.value || 0);
+
+      if (!name) {
+        showMessage('Debes ingresar un nombre.', 'error');
+        return;
+      }
+
+      if (!Number.isInteger(quantity) || quantity < 1) {
+        showMessage('La cantidad inicial debe ser 1 o más.', 'error');
+        return;
+      }
+
+      createGiftBtn.disabled = true;
+      createGiftBtn.textContent = 'Creando...';
+
+      const insertGroup = await supabaseClient
+        .from('gift_groups')
+        .insert({
+          name: name,
+          category: category || null,
+          description: description || null,
+          reference_url: referenceUrl || null,
+          image_url: imageUrl || null,
+          is_active: true
+        })
+        .select()
+        .single();
+
+      if (insertGroup.error) {
+        createGiftBtn.disabled = false;
+        createGiftBtn.textContent = 'Crear regalo';
+        showMessage(insertGroup.error.message || 'No se pudo crear el regalo.', 'error');
+        return;
+      }
+
+      const groupId = insertGroup.data.id;
+      const items = [];
+      for (let i = 1; i <= quantity; i += 1) {
+        items.push({
+          gift_group_id: groupId,
+          unit_number: i,
+          status: 'available'
+        });
+      }
+
+      const insertItems = await supabaseClient.from('gift_items').insert(items);
+
+      createGiftBtn.disabled = false;
+      createGiftBtn.textContent = 'Crear regalo';
+
+      if (insertItems.error) {
+        showMessage(insertItems.error.message || 'Se creó el regalo, pero falló la creación de unidades.', 'error');
+        return;
+      }
+
+      giftForm.reset();
+      giftQuantityInput.value = 1;
+      showMessage('Regalo creado correctamente.', 'ok');
+      await loadGifts();
+    }
+
+    async function addOneUnit(giftGroupId, giftName) {
+      hideMessage();
+
+      const fetchUnits = await supabaseClient
+        .from('gift_items')
+        .select('unit_number')
+        .eq('gift_group_id', giftGroupId)
+        .order('unit_number', { ascending: false })
+        .limit(1);
+
+      if (fetchUnits.error) {
+        showMessage(fetchUnits.error.message || 'No se pudo calcular la nueva unidad.', 'error');
+        return;
+      }
+
+      const lastUnit = fetchUnits.data && fetchUnits.data.length ? Number(fetchUnits.data[0].unit_number) : 0;
+      const newUnitNumber = lastUnit + 1;
+
+      const insertResponse = await supabaseClient
+        .from('gift_items')
+        .insert({
+          gift_group_id: giftGroupId,
+          unit_number: newUnitNumber,
+          status: 'available'
+        });
+
+      if (insertResponse.error) {
+        showMessage(insertResponse.error.message || 'No se pudo agregar la unidad.', 'error');
+        return;
+      }
+
+      showMessage('Se agregó una unidad a ' + giftName + '.', 'ok');
+      await loadGifts();
+    }
+
+    async function removeOneAvailableUnit(giftGroupId, giftName, availableCount) {
+      hideMessage();
+
+      if (Number(availableCount) < 1) {
+        showMessage('No hay unidades disponibles para quitar en ' + giftName + '.', 'error');
+        return;
+      }
+
+      const fetchResponse = await supabaseClient
+        .from('gift_items')
+        .select('id, unit_number')
+        .eq('gift_group_id', giftGroupId)
+        .eq('status', 'available')
+        .order('unit_number', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (fetchResponse.error) {
+        showMessage(fetchResponse.error.message || 'No se pudo encontrar una unidad disponible para quitar.', 'error');
+        return;
+      }
+
+      const deleteResponse = await supabaseClient
+        .from('gift_items')
+        .delete()
+        .eq('id', fetchResponse.data.id);
+
+      if (deleteResponse.error) {
+        showMessage(deleteResponse.error.message || 'No se pudo quitar la unidad.', 'error');
+        return;
+      }
+
+      showMessage('Se quitó una unidad disponible de ' + giftName + '.', 'ok');
+      await loadGifts();
+    }
+
+    async function clearOnlyReservations() {
+      hideMessage();
+      const ok = window.confirm('Esto borrará todas las reservas y dejará todas las unidades nuevamente disponibles. ¿Continuar?');
+      if (!ok) return;
+
+      const deleteReservations = await supabaseClient.from('reservations').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      if (deleteReservations.error) {
+        showMessage(deleteReservations.error.message || 'No se pudieron borrar las reservas.', 'error');
+        return;
+      }
+
+      const resetItems = await supabaseClient
+        .from('gift_items')
+        .update({ status: 'available' })
+        .neq('id', '00000000-0000-0000-0000-000000000000');
+
+      if (resetItems.error) {
+        showMessage(resetItems.error.message || 'Se borraron reservas, pero no se pudieron resetear las unidades.', 'error');
+        return;
+      }
+
+      showMessage('Se borraron las reservas y se liberaron las unidades.', 'ok');
+      await loadGifts();
+    }
+
+    async function resetAllData() {
+      hideMessage();
+      const ok = window.confirm('Esto borrará todos los regalos, unidades y reservas. ¿Continuar?');
+      if (!ok) return;
+
+      const deleteReservations = await supabaseClient.from('reservations').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      if (deleteReservations.error) {
+        showMessage(deleteReservations.error.message || 'No se pudieron borrar las reservas.', 'error');
+        return;
+      }
+
+      const deleteItems = await supabaseClient.from('gift_items').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      if (deleteItems.error) {
+        showMessage(deleteItems.error.message || 'No se pudieron borrar las unidades.', 'error');
+        return;
+      }
+
+      const deleteGroups = await supabaseClient.from('gift_groups').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      if (deleteGroups.error) {
+        showMessage(deleteGroups.error.message || 'No se pudieron borrar los regalos.', 'error');
+        return;
+      }
+
+      showMessage('Se borraron todos los regalos y reservas.', 'ok');
+      await loadGifts();
+    }
+
+    giftForm.addEventListener('submit', createGift);
+    refreshBtn.addEventListener('click', loadGifts);
+    searchInput.addEventListener('input', applyFilter);
+    clearReservationsBtn.addEventListener('click', clearOnlyReservations);
+    resetAllBtn.addEventListener('click', resetAllData);
+
+    giftTableBody.addEventListener('click', function (event) {
+      const addBtn = event.target.closest('.add-unit-btn');
+      const removeBtn = event.target.closest('.remove-unit-btn');
+
+      if (addBtn) {
+        addOneUnit(addBtn.getAttribute('data-id'), addBtn.getAttribute('data-name'));
+        return;
+      }
+
+      if (removeBtn) {
+        removeOneAvailableUnit(
+          removeBtn.getAttribute('data-id'),
+          removeBtn.getAttribute('data-name'),
+          removeBtn.getAttribute('data-available')
+        );
+      }
+    });
+
+    loadGifts();
+  </script>
+</body>
+</html>
