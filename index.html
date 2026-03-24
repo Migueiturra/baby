@@ -170,6 +170,10 @@
       font-weight: 600;
       cursor: pointer;
       transition: 0.2s ease;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .btn-primary {
@@ -319,6 +323,10 @@
       <div class="message" id="globalMessage"></div>
     </div>
 
+    <div class="toolbar" style="margin-top:-8px; margin-bottom:22px; justify-content:flex-start;">
+      <a class="btn btn-secondary" href="cambiar.html">¿Ya reservaste y quieres cambiar tu regalo?</a>
+    </div>
+
     <section class="grid" id="giftGrid"></section>
   </div>
 
@@ -364,6 +372,7 @@
   <script>
     const SUPABASE_URL = 'https://wxbxhntsyrigsgkyfczi.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_BkjlR_5-FZihiX3PynHenA_-20x-HK-';
+    const CHANGE_PAGE_URL = 'cambiar.html';
 
     const giftGrid = document.getElementById('giftGrid');
     const summaryBadge = document.getElementById('summaryBadge');
@@ -410,6 +419,41 @@
       confirmBox.classList.remove('show');
       submitReserveBtn.disabled = false;
       submitReserveBtn.textContent = 'Confirmar reserva';
+    }
+
+    function buildChangeLink(token) {
+      const url = new URL(CHANGE_PAGE_URL, window.location.href);
+      url.searchParams.set('token', token || '');
+      return url.toString();
+    }
+
+    async function shareReservation(details) {
+      const shareText = [
+        'Ya reservé un regalo en la lista.',
+        'Regalo: ' + details.giftName,
+        'Reservado por: ' + details.fullName,
+        details.contact ? 'Contacto: ' + details.contact : '',
+        'Token de cambio: ' + details.token,
+        'Link para cambiar el regalo: ' + details.changeLink
+      ].filter(Boolean).join('\n');
+
+      if (navigator.share) {
+        try {
+          await navigator.share({
+            title: 'Reserva de regalo',
+            text: shareText,
+            url: details.changeLink
+          });
+          return;
+        } catch (error) {
+          if (error && error.name === 'AbortError') {
+            return;
+          }
+        }
+      }
+
+      const whatsappUrl = 'https://wa.me/?text=' + encodeURIComponent(shareText);
+      window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
     }
 
     function openModal(giftId, giftName) {
@@ -551,21 +595,58 @@
       }
 
       const result = Array.isArray(response.data) ? response.data[0] : null;
+      const token = result && result.edit_token ? result.edit_token : 'No disponible';
+      const changeLink = buildChangeLink(token);
+      const fullName = name + ' ' + lastName;
 
       confirmCard.innerHTML = [
         '<strong>¡Tu regalo quedó reservado!</strong><br>',
         'Regalo: <strong>' + escapeHtml(selectedGiftName) + '</strong><br>',
-        'Reservado por: <strong>' + escapeHtml(name + ' ' + lastName) + '</strong><br>',
+        'Reservado por: <strong>' + escapeHtml(fullName) + '</strong><br>',
         contact ? 'Contacto: <strong>' + escapeHtml(contact) + '</strong><br>' : '',
         '<br>',
         'Haz una captura o toma una foto de esta pantalla para recordar tu elección.<br>',
         '<br>',
         'Token de cambio:',
-        '<code class="token">' + escapeHtml(result && result.edit_token ? result.edit_token : 'No disponible') + '</code>'
+        '<code class="token">' + escapeHtml(token) + '</code>',
+        '<br>',
+        'Link para cambiar tu regalo:',
+        '<code class="token">' + escapeHtml(changeLink) + '</code>',
+        '<div class="actions" style="margin-top:14px;">',
+          '<button type="button" class="btn btn-secondary" id="copyChangeLinkBtn">Copiar link de cambio</button>',
+          '<button type="button" class="btn btn-primary" id="shareReservationBtn">Compartir por WhatsApp</button>',
+        '</div>'
       ].join('');
 
       reserveForm.style.display = 'none';
       confirmBox.classList.add('show');
+
+      const copyChangeLinkBtn = document.getElementById('copyChangeLinkBtn');
+      const shareReservationBtn = document.getElementById('shareReservationBtn');
+
+      if (copyChangeLinkBtn) {
+        copyChangeLinkBtn.addEventListener('click', async function () {
+          try {
+            await navigator.clipboard.writeText(changeLink);
+            showMessage('Link de cambio copiado.', 'ok');
+          } catch (error) {
+            showMessage('No se pudo copiar automáticamente el link.', 'error');
+          }
+        });
+      }
+
+      if (shareReservationBtn) {
+        shareReservationBtn.addEventListener('click', function () {
+          shareReservation({
+            giftName: selectedGiftName,
+            fullName: fullName,
+            contact: contact,
+            token: token,
+            changeLink: changeLink
+          });
+        });
+      }
+
       showMessage('Reserva realizada correctamente.', 'ok');
       await loadGifts();
     });
@@ -605,4 +686,3 @@
   </script>
 </body>
 </html>
-git

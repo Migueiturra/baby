@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cambiar regalo</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg: #f6f7fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --primary: #7c3aed;
+      --primary-dark: #6d28d9;
+      --ok-bg: #ecfdf5;
+      --ok-text: #166534;
+      --warn-bg: #f3f4f6;
+      --warn-text: #374151;
+      --danger-bg: #fef2f2;
+      --danger-text: #991b1b;
+      --shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+      --radius: 20px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Inter, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .wrap {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    .hero, .card, .current-box {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .hero {
+      padding: 28px;
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 2rem;
+    }
+
+    .sub {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .message {
+      padding: 14px 16px;
+      border-radius: 14px;
+      font-size: .95rem;
+      display: none;
+      margin-bottom: 18px;
+    }
+
+    .message.show { display: block; }
+    .message.ok { background: var(--ok-bg); color: var(--ok-text); }
+    .message.error { background: var(--danger-bg); color: var(--danger-text); }
+    .message.info { background: var(--warn-bg); color: var(--warn-text); }
+
+    .token-box,
+    .current-box {
+      padding: 18px;
+      margin-bottom: 18px;
+    }
+
+    .token-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: end;
+    }
+
+    label {
+      display: block;
+      font-size: .92rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    input {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px 14px;
+      font-size: 1rem;
+      outline: none;
+      background: white;
+    }
+
+    input:focus {
+      border-color: #c4b5fd;
+      box-shadow: 0 0 0 3px rgba(124, 58, 237, .12);
+    }
+
+    .btn {
+      border: none;
+      border-radius: 14px;
+      padding: 12px 16px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: .2s ease;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+
+    .btn-primary:hover { background: var(--primary-dark); }
+    .btn-secondary {
+      background: #f3f4f6;
+      color: #111827;
+    }
+
+    .btn:disabled {
+      opacity: .6;
+      cursor: not-allowed;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    .card {
+      padding: 0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      min-height: 340px;
+    }
+
+    .card-image {
+      width: 100%;
+      height: 190px;
+      object-fit: cover;
+      display: block;
+      background: #f3f4f6;
+    }
+
+    .card-body {
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      flex: 1;
+    }
+
+    .card h3 {
+      margin: 0;
+      font-size: 1.1rem;
+    }
+
+    .meta, .small {
+      color: var(--muted);
+      font-size: .95rem;
+    }
+
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .pill {
+      padding: 8px 10px;
+      border-radius: 999px;
+      font-size: .85rem;
+      font-weight: 600;
+    }
+
+    .pill.available {
+      background: #ecfdf5;
+      color: #166534;
+    }
+
+    .pill.taken {
+      background: #f3f4f6;
+      color: #374151;
+    }
+
+    .actions {
+      margin-top: auto;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .hidden { display: none; }
+
+    @media (max-width: 920px) {
+      .grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 640px) {
+      .grid, .token-row { grid-template-columns: 1fr; }
+      .wrap { padding: 16px; }
+      h1 { font-size: 1.7rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <h1>Cambiar regalo</h1>
+      <p class="sub">
+        Ingresa tu token de cambio para ver tu reserva actual y elegir otro regalo disponible.
+      </p>
+    </section>
+
+    <div class="message" id="globalMessage"></div>
+
+    <section class="current-box token-box">
+      <div class="token-row">
+        <div>
+          <label for="tokenInput">Token de cambio</label>
+          <input id="tokenInput" placeholder="Pega aquí tu token" />
+        </div>
+        <button class="btn btn-primary" id="loadReservationBtn" type="button">Buscar reserva</button>
+      </div>
+    </section>
+
+    <section class="current-box hidden" id="currentReservationBox">
+      <h2 style="margin-bottom:10px;">Tu reserva actual</h2>
+      <div id="currentReservationContent"></div>
+    </section>
+
+    <section class="hidden" id="giftSection">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:16px; flex-wrap:wrap;">
+        <h2 style="margin:0;">Regalos disponibles para cambiar</h2>
+        <button class="btn btn-secondary" id="reloadGiftsBtn" type="button">Actualizar regalos</button>
+      </div>
+      <div class="grid" id="giftGrid"></div>
+    </section>
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'https://wxbxhntsyrigsgkyfczi.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_BkjlR_5-FZihiX3PynHenA_-20x-HK-';
+
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const globalMessage = document.getElementById('globalMessage');
+    const tokenInput = document.getElementById('tokenInput');
+    const loadReservationBtn = document.getElementById('loadReservationBtn');
+    const currentReservationBox = document.getElementById('currentReservationBox');
+    const currentReservationContent = document.getElementById('currentReservationContent');
+    const giftSection = document.getElementById('giftSection');
+    const giftGrid = document.getElementById('giftGrid');
+    const reloadGiftsBtn = document.getElementById('reloadGiftsBtn');
+
+    let currentToken = '';
+    let currentReservation = null;
+
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function showMessage(text, type) {
+      globalMessage.textContent = text;
+      globalMessage.className = 'message show ' + (type || 'info');
+    }
+
+    function hideMessage() {
+      globalMessage.textContent = '';
+      globalMessage.className = 'message';
+    }
+
+    function getTokenFromUrl() {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('token') || '';
+    }
+
+    async function loadCurrentReservation() {
+      hideMessage();
+      currentToken = tokenInput.value.trim();
+
+      if (!currentToken) {
+        showMessage('Debes ingresar un token.', 'error');
+        return;
+      }
+
+      loadReservationBtn.disabled = true;
+      loadReservationBtn.textContent = 'Buscando...';
+
+      const response = await supabaseClient
+        .from('reservations')
+        .select(`
+          id,
+          person_name,
+          person_last_name,
+          person_contact,
+          edit_token,
+          created_at,
+          gift_items (
+            id,
+            unit_number,
+            gift_groups (
+              id,
+              name,
+              description,
+              category,
+              image_url,
+              reference_url
+            )
+          )
+        `)
+        .eq('edit_token', currentToken)
+        .eq('is_active', true)
+        .single();
+
+      loadReservationBtn.disabled = false;
+      loadReservationBtn.textContent = 'Buscar reserva';
+
+      if (response.error) {
+        currentReservation = null;
+        currentReservationBox.classList.add('hidden');
+        giftSection.classList.add('hidden');
+        showMessage('No se encontró una reserva válida para ese token.', 'error');
+        return;
+      }
+
+      currentReservation = response.data;
+      renderCurrentReservation();
+      await loadAvailableGifts();
+      showMessage('Reserva cargada correctamente.', 'ok');
+    }
+
+    function renderCurrentReservation() {
+      const giftItem = currentReservation.gift_items || {};
+      const giftGroup = giftItem.gift_groups || {};
+
+      currentReservationContent.innerHTML = [
+        '<div><strong>Nombre:</strong> ' + escapeHtml(currentReservation.person_name + ' ' + currentReservation.person_last_name) + '</div>',
+        currentReservation.person_contact ? '<div><strong>Contacto:</strong> ' + escapeHtml(currentReservation.person_contact) + '</div>' : '',
+        '<div><strong>Regalo actual:</strong> ' + escapeHtml(giftGroup.name || 'Sin nombre') + '</div>',
+        '<div><strong>Unidad:</strong> ' + escapeHtml(giftItem.unit_number || '-') + '</div>',
+        giftGroup.category ? '<div><strong>Categoría:</strong> ' + escapeHtml(giftGroup.category) + '</div>' : '',
+        giftGroup.reference_url ? '<div><strong>Referencia:</strong> <a href="' + escapeHtml(giftGroup.reference_url) + '" target="_blank" rel="noopener noreferrer">Abrir enlace</a></div>' : ''
+      ].join('');
+
+      currentReservationBox.classList.remove('hidden');
+      giftSection.classList.remove('hidden');
+    }
+
+    async function loadAvailableGifts() {
+      const currentGiftGroupId = currentReservation && currentReservation.gift_items && currentReservation.gift_items.gift_groups
+        ? currentReservation.gift_items.gift_groups.id
+        : null;
+
+      const response = await supabaseClient
+        .from('gift_group_availability')
+        .select('*')
+        .eq('is_active', true)
+        .gt('available_units', 0)
+        .order('category', { ascending: true })
+        .order('name', { ascending: true });
+
+      if (response.error) {
+        showMessage('No se pudieron cargar los regalos disponibles.', 'error');
+        return;
+      }
+
+      const gifts = (response.data || []).filter(function (gift) {
+        return gift.id !== currentGiftGroupId;
+      });
+
+      renderGifts(gifts);
+    }
+
+    function renderGifts(gifts) {
+      if (!gifts.length) {
+        giftGrid.innerHTML = '<div class="current-box" style="padding:18px;">No hay otros regalos disponibles para cambiar en este momento.</div>';
+        return;
+      }
+
+      giftGrid.innerHTML = gifts.map(function (gift) {
+        const available = Number(gift.available_units || 0);
+        const total = Number(gift.total_units || 0);
+        const reserved = Number(gift.reserved_units || 0);
+        const referenceHtml = gift.reference_url
+          ? '<a class="btn btn-secondary" href="' + escapeHtml(gift.reference_url) + '" target="_blank" rel="noopener noreferrer">Ver referencia</a>'
+          : '';
+        const imageHtml = gift.image_url
+          ? '<img class="card-image" src="' + escapeHtml(gift.image_url) + '" alt="' + escapeHtml(gift.name) + '" loading="lazy" referrerpolicy="no-referrer">'
+          : '<div class="card-image"></div>';
+
+        return [
+          '<article class="card">',
+            imageHtml,
+            '<div class="card-body">',
+              '<div class="pill-row">',
+                gift.category ? '<span class="pill taken">' + escapeHtml(gift.category) + '</span>' : '',
+                '<span class="pill available">Disponible</span>',
+              '</div>',
+              '<h3>' + escapeHtml(gift.name) + '</h3>',
+              '<div class="meta">' + escapeHtml(gift.description || 'Sin descripción') + '</div>',
+              '<div class="small">Quedan <strong>' + available + '</strong> de ' + total + '</div>',
+              '<div class="small">Tomados: ' + reserved + '</div>',
+              '<div class="actions">',
+                '<button class="btn btn-primary change-gift-btn" data-gift-id="' + escapeHtml(gift.id) + '" data-gift-name="' + escapeHtml(gift.name) + '">Cambiar a este regalo</button>',
+                referenceHtml,
+              '</div>',
+            '</div>',
+          '</article>'
+        ].join('');
+      }).join('');
+    }
+
+    async function changeGift(newGiftGroupId, newGiftName, button) {
+      hideMessage();
+
+      if (!currentToken) {
+        showMessage('Primero debes cargar una reserva válida.', 'error');
+        return;
+      }
+
+      const ok = window.confirm('¿Quieres cambiar tu regalo actual por "' + newGiftName + '"?');
+      if (!ok) return;
+
+      button.disabled = true;
+      button.textContent = 'Cambiando...';
+
+      const response = await supabaseClient.rpc('change_reserved_gift', {
+        p_edit_token: currentToken,
+        p_new_gift_group_id: newGiftGroupId
+      });
+
+      button.disabled = false;
+      button.textContent = 'Cambiar a este regalo';
+
+      if (response.error) {
+        showMessage(response.error.message || 'No se pudo cambiar el regalo.', 'error');
+        await loadAvailableGifts();
+        return;
+      }
+
+      showMessage('Tu regalo fue cambiado correctamente.', 'ok');
+      await loadCurrentReservation();
+    }
+
+    giftGrid.addEventListener('click', function (event) {
+      const btn = event.target.closest('.change-gift-btn');
+      if (!btn) return;
+
+      changeGift(
+        btn.getAttribute('data-gift-id'),
+        btn.getAttribute('data-gift-name'),
+        btn
+      );
+    });
+
+    loadReservationBtn.addEventListener('click', loadCurrentReservation);
+    reloadGiftsBtn.addEventListener('click', loadAvailableGifts);
+
+    const urlToken = getTokenFromUrl();
+    if (urlToken) {
+      tokenInput.value = urlToken;
+      loadCurrentReservation();
+    }
+  </script>
+</body>
+</html>
