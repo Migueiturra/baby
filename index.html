@@ -451,6 +451,9 @@
         const statusLabel = isSoldOut ? 'Agotado' : 'Disponible';
         const buttonText = isSoldOut ? 'Ya tomado' : 'Elegir regalo';
         const disabledAttr = isSoldOut ? 'disabled' : '';
+        const referenceHtml = gift.reference_url
+          ? '<a class="btn btn-secondary" href="' + escapeHtml(gift.reference_url) + '" target="_blank" rel="noopener noreferrer">Ver referencia</a>'
+          : '';
 
         return [
           '<article class="card">',
@@ -464,6 +467,7 @@
             '<div class="small">Tomados: ' + reserved + '</div>',
             '<div class="actions">',
               '<button class="btn btn-primary reserve-trigger" data-gift-id="' + escapeHtml(gift.id) + '" data-gift-name="' + escapeHtml(gift.name) + '" ' + disabledAttr + '>' + buttonText + '</button>',
+              referenceHtml,
             '</div>',
           '</article>'
         ].join('');
